@@ -40,10 +40,30 @@ plt.rcParams['ytick.labelsize'] = 12
 
 random.seed(10)
 
+# Resolve paths relative to this script's directory
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+# Create a folder to save all plots
+PLOTS_DIR = SCRIPT_DIR / "plots"
+PLOTS_DIR.mkdir(exist_ok=True)
+
+# Global counter for auto-naming saved figures
+_plot_counter = 0
+
+def save_and_show(filename=None):
+    """Save the current figure to PLOTS_DIR, then show it."""
+    global _plot_counter
+    _plot_counter += 1
+    if filename is None:
+        filename = f"plot_{_plot_counter:02d}.png"
+    plt.savefig(PLOTS_DIR / filename, dpi=150, bbox_inches='tight')
+    print(f"  -> Saved: plots/{filename}")
+    plt.close()  # close figure to free memory and avoid blocking
+
 # ============================================================================
 # Helper function: plot ground truth vs prediction
 # ============================================================================
-def plot_gt_vs_pred(gt_array, pred_array):
+def plot_gt_vs_pred(gt_array, pred_array, save_name=None):
     """Plot ground truth vs prediction for train and test sets,
     along with error histograms."""
     title = ['Train', 'Train', 'Test', 'Test']
@@ -64,7 +84,7 @@ def plot_gt_vs_pred(gt_array, pred_array):
             ax.set_xlabel('ground truth - prediction')
             ax.set_ylabel('pdf')
     plt.tight_layout()
-    plt.show()
+    save_and_show(save_name)
 
 
 # ============================================================================
@@ -106,7 +126,7 @@ def plot_lin(pol_data, x_y_axis, y_test, lin_reg):
     ax.set_title('Linear fit in feature domain')
     ax.set_zlim(0, 200)
     plt.tight_layout()
-    plt.show()
+    save_and_show("linear_fit_3d.png")
 
 
 # ============================================================================
@@ -154,7 +174,7 @@ def plot_pol(pol_data, rel_x_y_axis, y_test, lin_reg, rel_indices, x_label, y_la
     ax.set_ylim3d(0, 100)
     ax.set_zlim3d(0, 200)
     plt.tight_layout()
-    plt.show()
+    save_and_show("polynomial_fit_3d.png")
 
 
 # ============================================================================
@@ -164,7 +184,7 @@ print("=" * 70)
 print("PART 1: DATA LOADING")
 print("=" * 70)
 
-X = pd.read_csv("data/insurance.csv")
+X = pd.read_csv(SCRIPT_DIR / "data" / "insurance.csv")
 print("\n--- Raw data sample ---")
 print(X.sample(8, random_state=5))
 
@@ -175,7 +195,7 @@ print("\n" + "=" * 70)
 print("PART 2: DUMMY CODING")
 print("=" * 70)
 
-X = pd.get_dummies(data=X, drop_first=True)
+X = pd.get_dummies(data=X, drop_first=True, dtype=float)
 print("\n--- Data after dummy coding ---")
 print(X.sample(8, random_state=5))
 
@@ -194,7 +214,7 @@ print(X.describe())
 X.hist(figsize=(12, 10), bins=30)
 plt.suptitle("Distribution of all variables", fontsize=16)
 plt.tight_layout()
-plt.show()
+save_and_show("01_histograms.png")
 
 # 3.3 Scatter plot: Age vs Charges
 plt.figure(figsize=(8, 6))
@@ -202,7 +222,7 @@ plt.scatter(X['age'], X['charges'], alpha=0.5)
 plt.xlabel('Age [years]')
 plt.ylabel('Charges [$]')
 plt.title('Age vs Charges')
-plt.show()
+save_and_show("02_age_vs_charges.png")
 
 # 3.4 Age vs Charges colored by smoking status (shows bimodal groups)
 plt.figure(figsize=(8, 6))
@@ -215,7 +235,7 @@ plt.legend(handles=[
     plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red',  label='Smoker'),
     plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', label='Non-smoker'),
 ])
-plt.show()
+save_and_show("03_age_vs_charges_smoker.png")
 
 # 3.5 BMI vs Charges colored by smoking status
 plt.figure(figsize=(8, 6))
@@ -227,14 +247,14 @@ plt.legend(handles=[
     plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='red',  label='Smoker'),
     plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', label='Non-smoker'),
 ])
-plt.show()
+save_and_show("04_bmi_vs_charges_smoker.png")
 
 # 3.6 Correlation heatmap
 plt.figure(figsize=(10, 8))
 sns.heatmap(X.corr(), annot=True, fmt=".2f", cmap='coolwarm', square=True)
 plt.title('Correlation Matrix')
 plt.tight_layout()
-plt.show()
+save_and_show("05_correlation_heatmap.png")
 
 # ============================================================================
 # PART 4: Closed-Form Linear Regression (Pseudoinverse)
@@ -263,7 +283,7 @@ print(f"Weights (w): {w}")
 
 gt_array   = [y_train, y_test]
 pred_array = [y_pred_train, y_pred_test]
-plot_gt_vs_pred(gt_array, pred_array)
+plot_gt_vs_pred(gt_array, pred_array, "06_closed_form_gt_vs_pred.png")
 
 # ============================================================================
 # PART 5: Stochastic Gradient Descent (SGD)
@@ -305,7 +325,7 @@ plt.legend(("train", "test"))
 plt.xlabel("iteration #")
 plt.ylabel("MSE")
 plt.title("SGD Learning Curve")
-plt.show()
+save_and_show("07_sgd_learning_curve.png")
 
 # SGD predictions
 y_pred_train = X_train @ w1
@@ -313,7 +333,7 @@ y_pred_test  = X_test  @ w1
 
 gt_array   = [y_train, y_test]
 pred_array = [y_pred_train, y_pred_test]
-plot_gt_vs_pred(gt_array, pred_array)
+plot_gt_vs_pred(gt_array, pred_array, "08_sgd_gt_vs_pred.png")
 
 # ============================================================================
 # PART 6: Linear Regression with scikit-learn (on scaled data)
@@ -331,7 +351,7 @@ y_pred_test  = lin_reg_sklearn.predict(X_test)
 
 gt_array   = [y_train, y_test]
 pred_array = [y_pred_train, y_pred_test]
-plot_gt_vs_pred(gt_array, pred_array)
+plot_gt_vs_pred(gt_array, pred_array, "09_sklearn_gt_vs_pred.png")
 
 # ============================================================================
 # PART 7: Polynomial Features + Linear Regression
@@ -341,7 +361,7 @@ print("PART 7: POLYNOMIAL FEATURES + LINEAR REGRESSION")
 print("=" * 70)
 
 # 7.1 Load new (2-feature) dataset
-pol_data = np.load("data/pol_data.npz")
+pol_data = np.load(SCRIPT_DIR / "data" / "pol_data.npz")
 X_new = np.c_[pol_data['x1'].ravel(), pol_data['x2'].ravel()]
 y = pol_data['data'].flatten()
 
@@ -359,10 +379,10 @@ y_pred_test_lin  = lin_reg.predict(X_test)
 gt_array   = [y_train, y_test]
 pred_array = [y_pred_train_lin, y_pred_test_lin]
 print("\n--- Linear fit in original domain ---")
-plot_gt_vs_pred(gt_array, pred_array)
+plot_gt_vs_pred(gt_array, pred_array, "10_linear_fit_gt_vs_pred.png")
 
 # 7.3 3D visualization of linear fit
-plot_lin(pol_data, X_test, y_test, lin_reg)
+plot_lin(pol_data, X_test, y_test, lin_reg)  # saves as 11_linear_fit_3d.png
 
 # 7.4 Polynomial feature transformation (degree=2)
 poly = PolynomialFeatures(degree=2, include_bias=False)
@@ -379,7 +399,7 @@ y_pred_test_pol  = lin_reg.predict(X_test_poly)
 gt_array   = [y_train, y_test]
 pred_array = [y_pred_train_pol, y_pred_test_pol]
 print("\n--- Polynomial fit (degree 2) ---")
-plot_gt_vs_pred(gt_array, pred_array)
+plot_gt_vs_pred(gt_array, pred_array, "12_poly_fit_gt_vs_pred.png")
 
 # 7.6 Identify the two most significant polynomial coefficients
 print("\nPolynomial feature names:", poly.get_feature_names_out())
@@ -397,7 +417,7 @@ y_label = r'$x_2^2$'
 rel_x = X_test_poly[:, rel_indices]
 
 # 7.7 3D visualization of polynomial fit
-plot_pol(pol_data, rel_x, y_test, lin_reg, rel_indices, x_label, y_label)
+plot_pol(pol_data, rel_x, y_test, lin_reg, rel_indices, x_label, y_label)  # saves as 13_polynomial_fit_3d.png
 
 # ============================================================================
 # CONCLUSIONS
